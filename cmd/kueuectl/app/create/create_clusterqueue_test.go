@@ -320,6 +320,35 @@ func TestParseResourceQuotas(t *testing.T) {
 			quotaArgs: []string{"alpha:cpu=1;memory=1", "beta:cpu=1"},
 			wantErr:   errInvalidResourceGroup,
 		},
+		"should fail to create when a later resource group covers a superset of an earlier one": {
+			quotaArgs: []string{"beta:memory=2Gi", "alpha:cpu=1;memory=1Gi"},
+			wantErr:   errInvalidResourceGroup,
+		},
+		"should fail to create when resource groups partially overlap": {
+			quotaArgs: []string{"alpha:cpu=1;memory=1", "beta:memory=1;example.com/gpu=2"},
+			wantErr:   errInvalidResourceGroup,
+		},
+		"should create two resource groups when one resource name is a suffix of another": {
+			quotaArgs: []string{"alpha:example.com/cpu=2", "beta:cpu=1"},
+			wantResourceGroups: []kueue.ResourceGroup{
+				{
+					CoveredResources: []corev1.ResourceName{"example.com/cpu"},
+					Flavors: []kueue.FlavorQuotas{
+						*utiltestingapi.MakeFlavorQuotas("alpha").
+							Resource("example.com/cpu", "2").
+							Obj(),
+					},
+				},
+				{
+					CoveredResources: []corev1.ResourceName{"cpu"},
+					Flavors: []kueue.FlavorQuotas{
+						*utiltestingapi.MakeFlavorQuotas("beta").
+							Resource("cpu", "1").
+							Obj(),
+					},
+				},
+			},
+		},
 		"should fail to create a resource group with an invalid flavor and multiple quotas set": {
 			quotaArgs:     []string{"alpha:cpu=1;memory=1"},
 			borrowingArgs: []string{"alpha:example.com/gpu=2"},

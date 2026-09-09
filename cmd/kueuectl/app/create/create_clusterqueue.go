@@ -27,6 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 	"k8s.io/cli-runtime/pkg/printers"
@@ -463,6 +464,7 @@ func mergeFlavorsByCoveredResources(resourceGroups []kueue.ResourceGroup) ([]kue
 	var mergedResources []kueue.ResourceGroup
 
 	indexByResourceGroupID := make(map[string]int)
+	coveredResources := sets.New[corev1.ResourceName]()
 	var index int
 	for _, rg := range resourceGroups {
 		resourcesGroupID := getResourcesGroupID(rg.CoveredResources)
@@ -471,9 +473,10 @@ func mergeFlavorsByCoveredResources(resourceGroups []kueue.ResourceGroup) ([]kue
 			continue
 		}
 
-		if !isResourceGroupValid(indexByResourceGroupID, resourcesGroupID) {
+		if coveredResources.HasAny(rg.CoveredResources...) {
 			return mergedResources, errInvalidResourceGroup
 		}
+		coveredResources.Insert(rg.CoveredResources...)
 		mergedResources = append(mergedResources, rg)
 		indexByResourceGroupID[resourcesGroupID] = index
 		index++
@@ -487,15 +490,4 @@ func getResourcesGroupID(coveredResources []corev1.ResourceName) string {
 	slices.Sort(s)
 
 	return strings.Join(s, ".")
-}
-
-func isResourceGroupValid(indexByResourceGroup map[string]int, newResourceGroup string) bool {
-	// check that new resource groups doesn't share resources with another group
-	for k := range indexByResourceGroup {
-		if strings.Contains(k, newResourceGroup) {
-			return false
-		}
-	}
-
-	return true
 }
