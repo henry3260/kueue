@@ -834,7 +834,7 @@ func TestClusterQueueDeleteCohortSubtreeMetrics(t *testing.T) {
 					deleted = cq
 				}
 			}
-			cqCache.AddOrUpdateWorkload(ctx, log, tc.workload)
+			cqCache.AddOrUpdateWorkload(log, tc.workload)
 			// Mirror the per-ClusterQueue Reconcile, which records the metrics of its cohort.
 			for _, cq := range tc.clusterQueues {
 				cqCache.RecordCohortMetrics(log, cq.Spec.CohortName)
